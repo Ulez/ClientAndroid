@@ -9,9 +9,11 @@ import android.widget.ArrayAdapter;
 import android.widget.EditText;
 import android.widget.ListView;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.PrintWriter;
 import java.net.Socket;
 import java.util.ArrayList;
 
@@ -20,16 +22,19 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
     public static final int MESSAGE_NEW_MSG = 1;
     private static final int MESSAGE_STATUS_MSG = 2;
+    private static final int SEND_SUCCESS = 3;
 
     private Socket socket;
     private MyHandler mHandler;
     private EditText etIp;
+    private EditText etSend;
     private TextView tvMsg;
     private TextView tvStatus;
     private String TAG = "MainActivity";
     private ListView listView;
     private ArrayList<String> adapterData;
     private ArrayAdapter<String> adapter;
+    private PrintWriter writer;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -37,6 +42,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         setContentView(R.layout.activity_main);
 
         etIp = findViewById(R.id.et_ip);
+        etSend = findViewById(R.id.et_send);
         tvMsg = findViewById(R.id.tv_msg);
         tvStatus = findViewById(R.id.tv_status);
         listView = findViewById(R.id.lv);
@@ -49,15 +55,41 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
         mHandler = new MyHandler(this);
         findViewById(R.id.bt).setOnClickListener(this);
+        findViewById(R.id.bt_clear).setOnClickListener(this);
+        findViewById(R.id.bt_send).setOnClickListener(this);
     }
 
     @Override
     public void onClick(View v) {
-        switch (v.getId()){
+        switch (v.getId()) {
             case R.id.bt:
                 connectToServer();
                 break;
+            case R.id.bt_clear:
+                adapterData.clear();
+                adapter.notifyDataSetChanged();
+                break;
+            case R.id.bt_send:
+                sendMsg();
+                break;
         }
+    }
+
+    private void sendMsg() {
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    writer.print(etSend.getText().toString());
+                    writer.flush();
+                    Log.e(TAG, "writer.println" + etSend.getText().toString());
+                    mHandler.obtainMessage(SEND_SUCCESS, etSend.getText().toString()).sendToTarget();
+                }catch (Exception e){
+                    Log.e(TAG,"SEND_ERROR"+e.getMessage());
+//                    mHandler.obtainMessage(SEND_ERROR, msg).sendToTarget();
+                }
+            }
+        }).start();
     }
 
     private void connectToServer() {
@@ -69,6 +101,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     socket = new Socket(paras[0], Integer.parseInt(paras[1]));
                     InputStream inputStream = socket.getInputStream();
                     mHandler.obtainMessage(MESSAGE_STATUS_MSG, "连接成功！").sendToTarget();
+
+                    writer = new PrintWriter(socket.getOutputStream(), true);
                     byte[] buffer = new byte[1024];
                     int len;
                     while ((len = inputStream.read(buffer)) != -1) {
@@ -92,10 +126,14 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         public void handle(MainActivity activity, Message msg) {
             switch (msg.what) {
                 case MESSAGE_NEW_MSG:
-                    activity.addNewMsg((String) msg.obj);
+                    activity.addNewMsg("收到:" + msg.obj);
                     break;
                 case MESSAGE_STATUS_MSG:
                     activity.tvStatus.setText((String) msg.obj);
+                    break;
+                case SEND_SUCCESS:
+                    activity.adapterData.add("发送:" + msg.obj);
+                    activity.adapter.notifyDataSetChanged();
                     break;
             }
         }
