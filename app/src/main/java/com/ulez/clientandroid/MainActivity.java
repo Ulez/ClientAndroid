@@ -6,6 +6,7 @@ import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
 import android.widget.ArrayAdapter;
+import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ListView;
 import android.widget.TextView;
@@ -32,6 +33,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private TextView tvStatus;
     private String TAG = "MainActivity";
     private ListView listView;
+    private Button disconnect;
     private ArrayList<String> adapterData;
     private ArrayAdapter<String> adapter;
     private PrintWriter writer;
@@ -46,6 +48,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         tvMsg = findViewById(R.id.tv_msg);
         tvStatus = findViewById(R.id.tv_status);
         listView = findViewById(R.id.lv);
+        disconnect = findViewById(R.id.disconnect);
 
 
         listView = findViewById(R.id.lv);
@@ -57,6 +60,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         findViewById(R.id.bt).setOnClickListener(this);
         findViewById(R.id.bt_clear).setOnClickListener(this);
         findViewById(R.id.bt_send).setOnClickListener(this);
+        disconnect.setOnClickListener(this);
     }
 
     @Override
@@ -72,6 +76,17 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             case R.id.bt_send:
                 sendMsg();
                 break;
+            case R.id.disconnect:
+                closeSocket();
+                break;
+        }
+    }
+
+    private void closeSocket() {
+        try {
+            socket.close();
+        } catch (IOException e) {
+            e.printStackTrace();
         }
     }
 
@@ -84,8 +99,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     writer.flush();
                     Log.e(TAG, "writer.println" + etSend.getText().toString());
                     mHandler.obtainMessage(SEND_SUCCESS, etSend.getText().toString()).sendToTarget();
-                }catch (Exception e){
-                    Log.e(TAG,"SEND_ERROR"+e.getMessage());
+                } catch (Exception e) {
+                    Log.e(TAG, "SEND_ERROR" + e.getMessage());
 //                    mHandler.obtainMessage(SEND_ERROR, msg).sendToTarget();
                 }
             }
@@ -96,22 +111,30 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         new Thread(new Runnable() {
             @Override
             public void run() {
+                InputStream inputStream = null;
                 try {
                     String[] paras = etIp.getText().toString().split(":");
                     socket = new Socket(paras[0], Integer.parseInt(paras[1]));
-                    InputStream inputStream = socket.getInputStream();
-                    mHandler.obtainMessage(MESSAGE_STATUS_MSG, "连接成功！").sendToTarget();
+                    inputStream = socket.getInputStream();
+                    mHandler.obtainMessage(MESSAGE_STATUS_MSG, "已连接至:" + socket.getRemoteSocketAddress().toString()).sendToTarget();
 
                     writer = new PrintWriter(socket.getOutputStream(), true);
-                    byte[] buffer = new byte[1024];
-                    int len;
+                } catch (IOException e) {
+                    mHandler.obtainMessage(MESSAGE_STATUS_MSG, "连接失败！").sendToTarget();
+                    Log.e(TAG, e.getMessage());
+                    e.printStackTrace();
+                }
+                byte[] buffer = new byte[1024];
+                int len;
+                try {
                     while ((len = inputStream.read(buffer)) != -1) {
                         String data = new String(buffer, 0, len);
                         mHandler.obtainMessage(MESSAGE_NEW_MSG, data).sendToTarget();
                     }
                 } catch (IOException e) {
-                    mHandler.obtainMessage(MESSAGE_STATUS_MSG, "连接失败！").sendToTarget();
-                    e.printStackTrace();
+                    Log.e(TAG, e.getMessage());
+                } finally {
+                    mHandler.obtainMessage(MESSAGE_STATUS_MSG, "已经断开！").sendToTarget();
                 }
             }
         }).start();
