@@ -49,8 +49,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         tvStatus = findViewById(R.id.tv_status);
         listView = findViewById(R.id.lv);
         disconnect = findViewById(R.id.disconnect);
-
-
+        etSend.setText("{\"type\":\"warning\",\"message\":\"供电线路故障\"}");
         listView = findViewById(R.id.lv);
         adapterData = new ArrayList<String>();
         adapter = new ArrayAdapter<String>(this, android.R.layout.simple_list_item_1, adapterData);
