@@ -131,6 +131,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             switch (msg.what) {
                 case MESSAGE_NEW_MSG:
                     activity.addNewMsg("收到:" + msg.obj);
+                    Log.d("lcy", (String) msg.obj);
                     break;
                 case MESSAGE_STATUS_MSG:
                     activity.tvStatus.setText((String) msg.obj);

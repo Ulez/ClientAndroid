@@ -16,7 +16,7 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="ws://192.168.210.210:8887" />
+            android:text="ws://192.168.130.154:9889" />
 
         <Button
             android:id="@+id/bt"
